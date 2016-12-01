@@ -1,5 +1,5 @@
-from compressor.conf import settings
 from compressor.base import Compressor, SOURCE_HUNK, SOURCE_FILE
+from compressor.conf import settings
 
 
 class JsCompressor(Compressor):
@@ -15,9 +15,12 @@ class JsCompressor(Compressor):
         for elem in self.parser.js_elems():
             attribs = self.parser.elem_attribs(elem)
             if 'src' in attribs:
-                basename = self.get_basename(attribs['src'])
-                filename = self.get_filename(basename)
-                content = (SOURCE_FILE, filename, basename, elem)
+                if attribs['src'].startswith(settings.MEDIA_URL):
+                    basename = self.get_basename(attribs['src'])
+                    filename = self.get_filename(basename)
+                    content = (SOURCE_FILE, filename, basename, elem)
+                else:
+                    content = (None, None, None, elem)
             else:
                 content = (SOURCE_HUNK, self.parser.elem_content(elem), None, elem)
             self.split_content.append(content)
@@ -40,8 +43,7 @@ class JsCompressor(Compressor):
         return self.split_content
 
     def output(self, *args, **kwargs):
-        if (settings.COMPRESS_ENABLED or settings.COMPRESS_PRECOMPILERS or
-                kwargs.get('forced', False)):
+        if settings.COMPRESS_PRECOMPILERS or kwargs.get('forced', False):
             self.split_contents()
             if hasattr(self, 'extra_nodes'):
                 ret = []

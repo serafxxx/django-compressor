@@ -33,6 +33,10 @@ from compressor.utils import get_mod_func
 logger = logging.getLogger("compressor.filters")
 
 
+def wrap_error(text):
+    return smart_text('/*{}*/'.format(smart_text(text)))
+
+
 class FilterBase(object):
     """
     A base class for filters that does nothing.
@@ -183,7 +187,7 @@ class CompilerFilter(FilterBase):
                 filtered, err = proc.communicate()
             filtered, err = filtered.decode(encoding), err.decode(encoding)
         except (IOError, OSError) as e:
-            raise FilterError('Unable to apply %s (%r): %s' %
+            return wrap_error('Unable to apply %s (%r): %s' %
                               (self.__class__.__name__, self.command, e))
         else:
             if proc.wait() != 0:
@@ -193,7 +197,7 @@ class CompilerFilter(FilterBase):
                            (self.__class__.__name__, self.command))
                     if filtered:
                         err += '\n%s' % filtered
-                raise FilterError(err)
+                return wrap_error(err)
 
             if self.verbose:
                 self.logger.debug(err)

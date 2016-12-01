@@ -39,22 +39,7 @@ class CompressorMixin(object):
             content=self.get_original_content(context), context=context)
 
     def debug_mode(self, context):
-        if settings.COMPRESS_DEBUG_TOGGLE:
-            # Only check for the debug parameter if a RequestContext was used
-            request = context.get('request', None)
-            if request is not None:
-                return settings.COMPRESS_DEBUG_TOGGLE in request.GET
-
-    def is_offline_compression_enabled(self, forced):
-        """
-        Check if offline compression is enabled or forced
-
-        Defaults to just checking the settings and forced argument,
-        but can be overridden to completely disable compression for
-        a subclass, for instance.
-        """
-        return (settings.COMPRESS_ENABLED and
-                settings.COMPRESS_OFFLINE) or forced
+        return False
 
     def render_offline(self, context):
         """
@@ -83,21 +68,13 @@ class CompressorMixin(object):
 
     def render_compressed(self, context, kind, mode, forced=False):
 
-        # See if it has been rendered offline
-        if self.is_offline_compression_enabled(forced) and not forced:
-            return self.render_offline(context)
-
-        # Take a shortcut if we really don't have anything to do
-        if (not settings.COMPRESS_ENABLED and
-                not settings.COMPRESS_PRECOMPILERS and not forced):
-            return self.get_original_content(context)
-
         context['compressed'] = {'name': getattr(self, 'name', None)}
+
         compressor = self.get_compressor(context, kind)
 
         # Check cache
         cache_key = None
-        if settings.COMPRESS_ENABLED and not forced:
+        if not forced:
             cache_key, cache_content = self.render_cached(compressor, kind, mode)
             if cache_content is not None:
                 return cache_content
@@ -121,10 +98,6 @@ class CompressorNode(CompressorMixin, template.Node):
         return self.nodelist.render(context)
 
     def render(self, context, forced=False):
-
-        # Check if in debug mode
-        if self.debug_mode(context):
-            return self.get_original_content(context)
 
         return self.render_compressed(context, self.kind, self.mode, forced=forced)
 

@@ -95,7 +95,7 @@ class CompressorConf(AppConf):
     def configure_root(self, value):
         # Uses Django's STATIC_ROOT by default
         if value is None:
-            value = settings.STATIC_ROOT
+            value = settings.MEDIA_ROOT
         if value is None:
             raise ImproperlyConfigured('COMPRESS_ROOT defaults to ' +
                                        'STATIC_ROOT, please define either')
@@ -104,9 +104,9 @@ class CompressorConf(AppConf):
     def configure_url(self, value):
         # Uses Django's STATIC_URL by default
         if value is None:
-            value = settings.STATIC_URL
+            value = settings.MEDIA_URL
         if not value.endswith('/'):
-            raise ImproperlyConfigured("URL settings (e.g. COMPRESS_URL) "
+            raise ImproperlyConfigured("URL settings (e.g. MEDIA_URL) "
                                        "must have a trailing slash")
         return value
 
@@ -117,12 +117,12 @@ class CompressorConf(AppConf):
 
     def configure_offline_context(self, value):
         if not value:
-            value = {'STATIC_URL': settings.STATIC_URL}
+            value = {'MEDIA_URL': settings.MEDIA_URL}
         return value
 
     def configure_template_filter_context(self, value):
         if not value:
-            value = {'STATIC_URL': settings.STATIC_URL}
+            value = {'MEDIA_URL': settings.MEDIA_URL}
         return value
 
     def configure_precompilers(self, value):

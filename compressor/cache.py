@@ -98,14 +98,17 @@ def get_templatetag_cachekey(compressor, mode, kind):
 
 
 def get_mtime(filename):
+    file_exists = os.path.isfile(filename)
     if settings.COMPRESS_MTIME_DELAY:
         key = get_mtime_cachekey(filename)
         mtime = cache.get(key)
         if mtime is None:
-            mtime = os.path.getmtime(filename)
-            cache.set(key, mtime, settings.COMPRESS_MTIME_DELAY)
+            if file_exists:
+                mtime = os.path.getmtime(filename)
+                cache.set(key, mtime, settings.COMPRESS_MTIME_DELAY)
         return mtime
-    return os.path.getmtime(filename)
+    if file_exists:
+        return os.path.getmtime(filename)
 
 
 def get_hashed_mtime(filename, length=12):

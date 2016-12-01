@@ -15,8 +15,8 @@ class CssAbsoluteFilter(FilterBase):
 
     def __init__(self, *args, **kwargs):
         super(CssAbsoluteFilter, self).__init__(*args, **kwargs)
-        self.root = settings.COMPRESS_ROOT
-        self.url = settings.COMPRESS_URL.rstrip('/')
+        self.root = settings.MEDIA_ROOT
+        self.url = settings.MEDIA_URL.rstrip('/')
         self.url_path = self.url
         self.has_scheme = False
 

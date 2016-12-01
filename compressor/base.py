@@ -16,8 +16,7 @@ from compressor.exceptions import (CompressorError, UncompressableFileError,
 from compressor.filters import CachedCompilerFilter
 from compressor.filters.css_default import CssAbsoluteFilter
 from compressor.storage import compressor_file_storage
-from compressor.signals import post_compress
-from compressor.utils import get_class, get_mod_func, staticfiles
+from compressor.utils import get_class, get_mod_func
 
 # Some constants for nicer handling.
 SOURCE_HUNK, SOURCE_FILE = 'inline', 'file'
@@ -42,7 +41,6 @@ class Compressor(object):
         self.filters = filters or []
         self.extra_context = {}
         self.precompiler_mimetypes = dict(settings.COMPRESS_PRECOMPILERS)
-        self.finders = staticfiles.finders
         self._storage = None
 
     @cached_property
@@ -71,19 +69,10 @@ class Compressor(object):
 
     def get_basename(self, url):
         """
-        Takes full path to a static file (eg. "/static/css/style.css") and
+        Takes full path to a media file (eg. "/media/css/style.css") and
         returns path with storage's base url removed (eg. "css/style.css").
         """
-        try:
-            base_url = self.storage.base_url
-        except AttributeError:
-            base_url = settings.COMPRESS_URL
-        if not url.startswith(base_url):
-            raise UncompressableFileError("'%s' isn't accessible via "
-                                          "COMPRESS_URL ('%s') and can't be "
-                                          "compressed" % (url, base_url))
-        basename = url.replace(base_url, "", 1)
-        # drop the querystring, which is used for non-compressed cache-busting.
+        basename = url.replace(settings.MEDIA_URL, "", 1)
         return basename.split("?", 1)[0]
 
     def get_filepath(self, content, basename=None):
@@ -109,33 +98,10 @@ class Compressor(object):
         """
         Returns full path to a file, for example:
 
-        get_filename('css/one.css') -> '/full/path/to/static/css/one.css'
+        get_filename('css/one.css') -> '/full/path/to/media/css/one.css'
         """
-        filename = None
-        # First try finding the file using the storage class.
-        # This is skipped in DEBUG mode as files might be outdated in
-        # compressor's final destination (COMPRESS_ROOT) during development
-        if not settings.DEBUG:
-            try:
-                # call path first so remote storages don't make it to exists,
-                # which would cause network I/O
-                filename = self.storage.path(basename)
-                if not self.storage.exists(basename):
-                    filename = None
-            except NotImplementedError:
-                # remote storages don't implement path, access the file locally
-                if compressor_file_storage.exists(basename):
-                    filename = compressor_file_storage.path(basename)
-        # secondly try to find it with staticfiles
-        if not filename and self.finders:
-            filename = self.finders.find(url2pathname(basename))
-        if filename:
-            return filename
-        # or just raise an exception as the last resort
-        raise UncompressableFileError(
-            "'%s' could not be found in the COMPRESS_ROOT '%s'%s" %
-            (basename, settings.COMPRESS_ROOT,
-             self.finders and " or with staticfiles." or "."))
+
+        return os.path.join(settings.MEDIA_ROOT, url2pathname(basename))
 
     def get_filecontent(self, filename, charset):
         """
@@ -249,11 +215,7 @@ class Compressor(object):
 
         filter_or_command = self.precompiler_mimetypes.get(mimetype)
         if filter_or_command is None:
-            if mimetype in ("text/css", "text/javascript"):
-                return False, content
-            raise CompressorError("Couldn't find any precompiler in "
-                                  "COMPRESS_PRECOMPILERS setting for "
-                                  "mimetype '%s'." % mimetype)
+            return False, content
 
         mod_name, cls_name = get_mod_func(filter_or_command)
         try:
@@ -346,7 +308,5 @@ class Compressor(object):
         else:
             final_context = self.context
 
-        post_compress.send(sender=self.__class__, type=self.type,
-                           mode=mode, context=final_context)
         template_name = self.get_template_name(mode)
         return render_to_string(template_name, context=final_context)
